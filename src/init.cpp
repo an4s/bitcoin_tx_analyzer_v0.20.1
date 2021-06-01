@@ -54,6 +54,7 @@
 #include <util/translation.h>
 #include <validation.h>
 #include <hash.h>
+#include <txAnalyzer.h>
 
 
 #include <validationinterface.h>
@@ -507,6 +508,8 @@ void SetupServerArgs()
     gArgs.AddArg("-checkpoints", strprintf("Enable rejection of any forks from the known historical chain until block 295000 (default: %u)", DEFAULT_CHECKPOINTS_ENABLED), ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::DEBUG_TEST);
     gArgs.AddArg("-deprecatedrpc=<method>", "Allows deprecated RPC method(s) to be used", ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::DEBUG_TEST);
     gArgs.AddArg("-dropmessagestest=<n>", "Randomly drop 1 of every <n> network messages", ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::DEBUG_TEST);
+    gArgs.AddArg("-enable-tx-analysis", "Enable analysis of transactions", false, OptionsCategory::DEBUG_TEST);
+    gArgs.AddArg("-ta-input-filename=</relative/path/to/file>", strprintf("Relative path to file containing names of files containing hashes of transactions to analyze (default: %s)", DEFAULT_TA_INPUT_FILENAME), false, OptionsCategory::DEBUG_TEST);
     gArgs.AddArg("-stopafterblockimport", strprintf("Stop running after importing blocks from disk (default: %u)", DEFAULT_STOPAFTERBLOCKIMPORT), ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::DEBUG_TEST);
     gArgs.AddArg("-stopatheight", strprintf("Stop running after reaching the given height in the main chain (default: %u)", DEFAULT_STOPATHEIGHT), ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::DEBUG_TEST);
     gArgs.AddArg("-limitancestorcount=<n>", strprintf("Do not accept transactions if number of in-mempool ancestors is <n> or more (default: %u)", DEFAULT_ANCESTOR_LIMIT), ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::DEBUG_TEST);
@@ -1865,6 +1868,24 @@ bool AppInitMain(NodeContext& node)
     }
     if (!node.connman->Start(*node.scheduler, connOptions)) {
         return false;
+    }
+
+    // initialize and start an independent thread to perform analysis on transactions
+    if(gArgs.GetBoolArg("-enable-tx-analysis", DEFAULT_TX_ANALYSIS_STATUS))
+    {
+        std::cout << "> TX analysis enabled" << std::endl;
+        std::cout << "> Initializing TX analyzer" << std::endl;
+        if(initTXAnalyzer(gArgs.GetArg("-ta-input-filename", DEFAULT_TA_INPUT_FILENAME))
+        )
+        {
+            std::cout << "> TX analyzer initialized successfully" << std::endl;
+            std::cout << "> Running TX analysis" << std::endl;
+            threadGroup.create_thread(txAnalyzerThread);
+        }
+        else
+        {
+            std::cout << "> TX analyzer intializing failed" << std::endl;
+        }
     }
 
     // ********************************************************* Step 13: finished
