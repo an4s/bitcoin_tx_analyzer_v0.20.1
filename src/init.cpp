@@ -1884,7 +1884,7 @@ bool AppInitMain(NodeContext& node)
         }
         else
         {
-            std::cout << "> TX analyzer intializing failed" << std::endl;
+            std::cout << "> TX analyzer initializing failed" << std::endl;
         }
     }
 
